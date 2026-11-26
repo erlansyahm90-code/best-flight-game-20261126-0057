@@ -40,7 +40,7 @@ body { font-family: "Segoe UI", system-ui, -apple-system, Roboto, Arial, sans-se
 #hud-top .panel { min-width: 168px; text-align: center; }
 #compass-strip { position: relative; height: 22px; overflow: hidden; margin-top: 2px;
   border-top: 1px solid rgba(255,255,255,0.25); border-bottom: 1px solid rgba(255,255,255,0.25); }
-#compass-tape { position: absolute; top: 2px; left: 0; white-space: nowrap; font-size: 13px; font-weight: 700; letter-spacing: 1px; }
+#compass-tape { position: absolute; top: 2px; left: 0; width: 100%; white-space: nowrap; font-size: 13px; font-weight: 700; letter-spacing: 1px; }
 #compass-needle { position: absolute; left: 50%; top: 0; transform: translateX(-50%); color: var(--accent); font-size: 12px; }
 
 #hud-left { position: absolute; top: 10px; left: 10px; display: flex; flex-direction: column; gap: 10px; width: 240px; }
@@ -136,6 +136,10 @@ body { font-family: "Segoe UI", system-ui, -apple-system, Roboto, Arial, sans-se
   #hud-left .panel { padding: 6px 9px; }
   #hud-mission-obj { font-size: 12px; }
   #panel-controls { display: none; }
+  /* Toast misi jangan menutupi panel skor: geser ke kanan panel kiri */
+  #hud-center { top: 130px; left: 186px; right: 8px; transform: none; width: auto; }
+  #hud-toast { font-size: 13px; padding: 5px 10px; }
+  #hud-warning { font-size: 15px; padding: 6px 10px; }
   #mission-cards { grid-template-columns: 1fr; }
   #banner-title { font-size: 32px; }
 }

@@ -149,7 +149,7 @@ export class Mission {
       this.score = 300 + quality * 2;
       const verdict = quality >= 80 ? 'MULUS SEKALI!' : quality >= 55 ? 'MENDARAT DENGAN BAIK' : 'MENDARAT KASAR';
       return {
-        event: 'done', text: `MENDARAT! ${verdict}`,
+        event: 'done', text: verdict,
         detail: `Nilai landing ${quality}/100 · speed ${Math.round(state.speedKnots())} kt · skor misi ${this.score}`,
       };
     }

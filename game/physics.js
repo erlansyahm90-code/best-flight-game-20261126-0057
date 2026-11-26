@@ -18,7 +18,7 @@ export class FlightState {
     this.position = pos.clone();
     this.heading = THREE.MathUtils.degToRad(headingDeg); // 0 = ke -Z (utara)
     this.pitch = 0;      // radian, + = hidung naik
-    this.bank = 0;       // radian, + = miring kanan
+    this.bank = 0;       // radian, + = miring kiri (sayap kiri turun)
     this.speed = 0;
     this.throttle = 0;
     this.verticalSpeed = 0;
@@ -58,7 +58,9 @@ export class FlightState {
     }
 
     // --- Banking & belok ---
-    const targetBank = (input.right ? 1 : 0) * 0.62 - (input.left ? 1 : 0) * 0.62;
+    // targetBank: A/◀ = + (miring kiri), D/▶ = − (miring kanan).
+    // Belok mengikuti bank: heading berkurang = belok kiri, bertambah = kanan.
+    const targetBank = (input.left ? 1 : 0) * 0.62 - (input.right ? 1 : 0) * 0.62;
     this.bank += (targetBank - this.bank) * Math.min(1, dt * 3.2);
     // Belok sebanding bank & kecepatan (banking turn)
     this.heading -= this.bank * (this.speed / MAX_SPEED) * 1.15 * dt;
@@ -117,7 +119,7 @@ export class FlightState {
       // Apakah ini landing di runway?
       const onRunway = Math.abs(this.position.x - RUNWAY.x) < RUNWAY.halfLen
         && Math.abs(this.position.z - RUNWAY.z) < RUNWAY.halfWid;
-      const gentle = this.speed < 42 && this.verticalSpeed > -6 && Math.abs(this.pitch) < 0.22;
+      const gentle = this.speed < 42 && this.verticalSpeed > -6 && Math.abs(this.pitch) < 0.28;
       if (onRunway && gentle && this.speed > 4) {
         this.landed = true;
         this.position.y = RUNWAY.height + 1.4;

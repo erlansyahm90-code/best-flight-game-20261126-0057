@@ -24,8 +24,9 @@ function compassTape(headingDeg) {
     let diff = m.d - headingDeg;
     while (diff > 180) diff -= 360;
     while (diff < -180) diff += 360;
-    if (Math.abs(diff) < 70) {
-      const x = 50 + diff * 1.05; // persen dari tengah
+    if (Math.abs(diff) < 52) {
+      // Jepit posisi supaya label tidak terpotong di tepi strip
+      const x = Math.min(90, Math.max(10, 50 + diff * 1.05)); // persen dari tengah
       html += `<span style="position:absolute;left:${x}%;transform:translateX(-50%)">${m.label}</span>`;
     }
   }
