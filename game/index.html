@@ -1,0 +1,142 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>Archipelago Air — Terbang di Atas Kepulauan Indonesia</title>
+<style>
+  html, body { margin: 0; height: 100%; overflow: hidden; background: #0b2a4a; }
+  #scene { position: fixed; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; }
+  #status { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+</style>
+<link rel="stylesheet" href="./style.css">
+<script type="importmap">
+{ "imports": { "three": "./vendor/three/three.module.min.js" } }
+</script>
+</head>
+<body>
+<canvas id="scene" aria-label="Archipelago Air: game terbang di atas kepulauan Indonesia"></canvas>
+<p id="status" role="status" aria-live="polite"></p>
+
+<!-- ======= HUD ======= -->
+<div id="hud" class="hidden">
+  <div id="hud-top">
+    <div class="panel" id="panel-speed">
+      <div class="label">KECEPATAN</div>
+      <div class="big"><span id="hud-speed">0</span><span class="unit"> kt</span></div>
+      <div class="bar"><div id="bar-throttle" class="fill throttle"></div></div>
+      <div class="sub">THR <span id="hud-throttle">0</span>%</div>
+    </div>
+    <div class="panel" id="panel-compass">
+      <div class="label">HEADING</div>
+      <div class="big"><span id="hud-heading">000</span>°</div>
+      <div id="compass-strip"><div id="compass-tape"></div><div id="compass-needle">▲</div></div>
+      <div class="sub" id="hud-heading-name">UTARA</div>
+    </div>
+    <div class="panel" id="panel-alt">
+      <div class="label">KETINGGIAN</div>
+      <div class="big"><span id="hud-alt">0</span><span class="unit"> m</span></div>
+      <div class="bar"><div id="bar-alt" class="fill alt"></div></div>
+      <div class="sub">VERT <span id="hud-vs">0</span> m/s</div>
+    </div>
+  </div>
+
+  <div id="hud-left">
+    <div class="panel" id="panel-mission">
+      <div class="label">MISI</div>
+      <div id="hud-mission-name">—</div>
+      <div id="hud-mission-obj">—</div>
+      <div id="hud-mission-progress">—</div>
+    </div>
+    <div class="panel">
+      <div class="label">SKOR <span id="hud-score" class="score">0</span></div>
+      <div class="sub">WAKTU <span id="hud-time">00:00</span></div>
+      <div class="sub">BAHAN BAKAR</div>
+      <div class="bar"><div id="bar-fuel" class="fill fuel"></div></div>
+      <div class="sub">KERUSAKAN <span id="hud-damage">0</span>%</div>
+      <div class="bar"><div id="bar-damage" class="fill damage"></div></div>
+    </div>
+  </div>
+
+  <div id="hud-center">
+    <div id="hud-warning" class="hidden">⚠ STALL — TAMBAH THROTTLE!</div>
+    <div id="hud-toast" class="hidden"></div>
+  </div>
+
+  <div id="hud-bottom">
+    <div class="panel" id="panel-controls">
+      <span><b>W/S</b> throttle</span><span><b>A/D</b> belok</span><span><b>↑/↓</b> pitch</span>
+      <span><b>V</b> kamera</span><span><b>R</b> restart</span><span><b>1/2/3</b> misi</span>
+    </div>
+  </div>
+</div>
+
+<!-- ======= Cockpit frame (hanya mode cockpit) ======= -->
+<div id="cockpit" class="hidden">
+  <div id="cockpit-top"></div>
+  <div id="cockpit-left"></div>
+  <div id="cockpit-right"></div>
+  <div id="cockpit-bottom"></div>
+</div>
+
+<!-- ======= Kontrol sentuh (HP) ======= -->
+<div id="touch" class="hidden">
+  <div id="touch-left">
+    <button id="btn-left" data-k="left">◀ BELOK</button>
+    <button id="btn-right" data-k="right">BELOK ▶</button>
+    <button id="btn-down" data-k="down">▼ TURUN</button>
+    <button id="btn-up" data-k="up">▲ NAIK</button>
+  </div>
+  <div id="touch-right">
+    <button id="btn-thr-up" data-k="thrUp">THR +</button>
+    <button id="btn-thr-dn" data-k="thrDn">THR −</button>
+    <button id="btn-cam" data-k="cam">KAMERA</button>
+  </div>
+</div>
+
+<!-- ======= Layar awal ======= -->
+<div id="menu">
+  <div id="menu-card">
+    <h1>ARCHIPELAGO AIR</h1>
+    <p class="tagline">Terbang di atas kepulauan Indonesia — gunung berapi, teluk biru, dan satu landasan pacu.</p>
+    <p class="tagline small">3 misi · instrumen hidup · bahan bakar &amp; kerusakan · stall sungguhan</p>
+    <div id="mission-cards">
+      <button class="mission-card" data-mission="1">
+        <span class="m-num">MISI 1</span><span class="m-title">RING RUN</span>
+        <span class="m-desc">Tembus 8 ring emas di atas Teluk Banda. Cepat &amp; rapi = bonus.</span>
+      </button>
+      <button class="mission-card" data-mission="2">
+        <span class="m-num">MISI 2</span><span class="m-title">VOLCANO SURVEY</span>
+        <span class="m-desc">Lingkari kawah Gunung Api dua putaran di ketinggian aman.</span>
+      </button>
+      <button class="mission-card" data-mission="3">
+        <span class="m-num">MISI 3</span><span class="m-title">FINAL LANDING</span>
+        <span class="m-desc">Mendarat mulus di runway Pulau Utama. Kecepatan &amp; sudut dinilai.</span>
+      </button>
+      <button class="mission-card" data-mission="0">
+        <span class="m-num">BEBAS</span><span class="m-title">TERBANG BEBAS</span>
+        <span class="m-desc">Jelajahi kepulauan tanpa misi. Bahan bakar tetap berjalan.</span>
+      </button>
+    </div>
+    <p class="controls-hint">Keyboard: <b>W/S</b> throttle · <b>A/D</b> belok banking · <b>↑/↓</b> naik/turun · <b>V</b> ganti kamera · <b>R</b> ulang</p>
+    <p class="controls-hint">HP: tombol sentuh di layar. Terlalu lambat = stall, pesawat jatuh.</p>
+  </div>
+</div>
+
+<!-- ======= Banner akhir (landing / crash / misi selesai) ======= -->
+<div id="banner" class="hidden">
+  <div id="banner-card">
+    <h2 id="banner-title">MENDARAT!</h2>
+    <p id="banner-sub">—</p>
+    <div id="banner-score">SKOR <span id="banner-score-num">0</span></div>
+    <div id="banner-detail">—</div>
+    <div id="banner-buttons">
+      <button id="btn-again">TERBANG LAGI (R)</button>
+      <button id="btn-menu">PILIH MISI</button>
+    </div>
+  </div>
+</div>
+
+<script type="module" src="./main.js"></script>
+</body>
+</html>
