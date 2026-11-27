@@ -1,4 +1,4 @@
-// Archipelago Air — hud.js
+// Toy Plane — hud.js
 // Instrumen HUD yang menyala: kecepatan, kompas heading, ketinggian,
 // bahan bakar, kerusakan, skor misi, timer, peringatan stall, dan banner akhir.
 import { MAX_FUEL } from './physics.js';
@@ -64,7 +64,7 @@ export class Hud {
     e.tape.innerHTML = compassTape(hd);
     e.alt.textContent = Math.round(Math.max(0, state.position.y));
     e.vs.textContent = (state.verticalSpeed >= 0 ? '+' : '') + state.verticalSpeed.toFixed(1);
-    e.barAlt.style.width = Math.min(100, (state.position.y / 320) * 100) + '%';
+    e.barAlt.style.width = Math.min(100, (state.position.y / 120) * 100) + '%';
     e.barFuel.style.width = (state.fuel / MAX_FUEL * 100) + '%';
     e.barFuel.style.background = state.fuel < 25 ? '#ff9f1c' : '#39d98a';
     e.damage.textContent = Math.round(state.damage);
@@ -78,7 +78,7 @@ export class Hud {
       e.score.textContent = mission.score;
     } else {
       e.missionName.textContent = 'TERBANG BEBAS';
-      e.missionObj.textContent = 'Jelajahi kepulauan. Jaga bahan bakar!';
+      e.missionObj.textContent = 'Jelajahi rumah raksasa. Jaga bahan bakar!';
       e.missionProgress.textContent = 'Alt maks ' + Math.round(state.maxAlt) + ' m';
       e.score.textContent = 0;
     }

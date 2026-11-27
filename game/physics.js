@@ -1,8 +1,12 @@
-// Archipelago Air — physics.js
+// Toy Plane — physics.js
 // Model terbang arcade: throttle, banking, pitch, lift & stall,
-// tabrakan terrain/laut, bahan bakar, kerusakan, dan penilaian landing.
+// tabrakan perabot/lantai, bahan bakar, kerusakan, dan penilaian landing.
+// Adaptasi 3 bab: heightfield, langit-langit, zona pendaratan & runway
+// diambil dari dunia AKTIF (worlds.js) — kamar (Bab 1), rumah (Bab 2),
+// taman (Bab 3). Sentuhan lembut di zona pendaratan sah dunia aktif
+// tercatat sebagai `landed` + `landingZone` (nama zonanya).
 import * as THREE from 'three';
-import { terrainHeight, RUNWAY, isOverLand } from './terrain.js';
+import { terrainHeight, isOverLand, ceilingY, landingZones, activeRunway } from './worlds.js';
 
 export const MAX_SPEED = 95;      // m/s pada throttle penuh
 export const STALL_SPEED = 26;    // m/s — di bawah ini pesawat stall
@@ -28,9 +32,31 @@ export class FlightState {
     this.onGround = false;
     this.crashed = false;
     this.landed = false;
+    this.landingZone = null;
     this.flightTime = 0;
     this.maxAlt = 0;
     this.graceUntil = 0;
+  }
+
+  // Respawn di CHECKPOINT (Misi 1): posisi & arah diatur dari ring terakhir,
+  // kerusakan dipulihkan penuh, bahan bakar diisi sampai minimal 60.
+  // Waktu terbang & skor misi TIDAK disentuh — progres pemain tersimpan.
+  respawn(pos, headingDeg) {
+    this.position = pos.clone();
+    this.heading = THREE.MathUtils.degToRad(headingDeg);
+    this.pitch = 0;
+    this.bank = 0;
+    this.speed = 55;
+    this.throttle = 0.65;
+    this.verticalSpeed = 0;
+    this.damage = 0;
+    this.stalled = false;
+    this.onGround = false;
+    this.crashed = false;
+    this.landed = false;
+    this.landingZone = null;
+    this.fuel = Math.max(this.fuel, 60);
+    this.graceUntil = this.flightTime + 2;
   }
 
   // input: {thrUp, thrDn, left, right, up, down} boolean
@@ -85,6 +111,13 @@ export class FlightState {
     this.verticalSpeed = climb + sink;
     this.position.y += this.verticalSpeed * dt;
 
+    // --- Plafon dunia aktif: kamar/rumah 104, taman terbuka 500 ---
+    const ceil = ceilingY();
+    if (this.position.y > ceil) {
+      this.position.y = ceil;
+      if (this.verticalSpeed > 0) this.verticalSpeed = 0;
+    }
+
     // --- Bahan bakar: habis sebanding throttle ---
     if (this.throttle > 0.02 && this.speed > 1) {
       this.fuel = Math.max(0, this.fuel - this.throttle * dt * 0.55);
@@ -116,13 +149,15 @@ export class FlightState {
     if (this.flightTime < this.graceUntil) return;
 
     if (clearance <= 1.4) {
-      // Apakah ini landing di runway?
-      const onRunway = Math.abs(this.position.x - RUNWAY.x) < RUNWAY.halfLen
-        && Math.abs(this.position.z - RUNWAY.z) < RUNWAY.halfWid;
+      // Sentuhan lembut di zona pendaratan sah dunia aktif (landasan bab,
+      // pasir istana Bab 2, cakram putaran Bab 3) = landing sah.
       const gentle = this.speed < 42 && this.verticalSpeed > -6 && Math.abs(this.pitch) < 0.28;
-      if (onRunway && gentle && this.speed > 4) {
+      const { x, z } = this.position;
+      const zone = landingZones().find((zn) => x >= zn.x0 && x <= zn.x1 && z >= zn.z0 && z <= zn.z1);
+      if (zone && gentle && this.speed > 4) {
         this.landed = true;
-        this.position.y = RUNWAY.height + 1.4;
+        this.landingZone = zone.name;
+        this.position.y = zone.top + 1.4;
         this.speed = Math.max(0, this.speed - 12);
         return;
       }
@@ -168,7 +203,8 @@ export class FlightState {
     score -= Math.abs(THREE.MathUtils.radToDeg(this.pitch)) * 1.4; // sudut
     score -= Math.abs(THREE.MathUtils.radToDeg(this.bank)) * 0.9;  // sayap miring
     score -= Math.abs(this.verticalSpeed) * 3;              // turun terlalu keras
-    score -= Math.abs(this.position.x - RUNWAY.x) / RUNWAY.halfLen * 12; // jauh dari tengah
+    const rw = activeRunway();
+    score -= Math.abs(this.position.x - rw.x) / rw.halfLen * 12; // jauh dari tengah
     return Math.max(0, Math.round(score));
   }
 }

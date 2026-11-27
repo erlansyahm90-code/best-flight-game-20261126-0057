@@ -3,9 +3,9 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
-<title>Archipelago Air — Terbang di Atas Kepulauan Indonesia</title>
+<title>Toy Plane — Pesawat Mainan di Dalam Rumah</title>
 <style>
-  html, body { margin: 0; height: 100%; overflow: hidden; background: #0b2a4a; }
+  html, body { margin: 0; height: 100%; overflow: hidden; background: #3a2410; }
   #scene { position: fixed; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; }
   #status { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 </style>
@@ -15,7 +15,7 @@
 </script>
 </head>
 <body>
-<canvas id="scene" aria-label="Archipelago Air: game terbang di atas kepulauan Indonesia"></canvas>
+<canvas id="scene" aria-label="Toy Plane: pesawat mainan terbang di dalam rumah raksasa"></canvas>
 <p id="status" role="status" aria-live="polite"></p>
 
 <!-- ======= HUD ======= -->
@@ -66,7 +66,7 @@
   <div id="hud-bottom">
     <div class="panel" id="panel-controls">
       <span><b>W/S</b> throttle</span><span><b>A/D</b> belok</span><span><b>↑/↓</b> pitch</span>
-      <span><b>V</b> kamera</span><span><b>R</b> restart</span><span><b>1/2/3</b> misi</span>
+      <span><b>V</b> kamera</span><span><b>R</b> checkpoint</span><span><b>1/2/3</b> bab</span>
     </div>
   </div>
 </div>
@@ -97,29 +97,43 @@
 <!-- ======= Layar awal ======= -->
 <div id="menu">
   <div id="menu-card">
-    <h1>ARCHIPELAGO AIR</h1>
-    <p class="tagline">Terbang di atas kepulauan Indonesia — gunung berapi, teluk biru, dan satu landasan pacu.</p>
-    <p class="tagline small">3 misi · instrumen hidup · bahan bakar &amp; kerusakan · stall sungguhan</p>
+    <h1>TOY PLANE</h1>
+    <p class="tagline">Pesawat mainan di dalam rumah — tiga bab cerita: belajar terbang di kamar anak, kabur lewat jendela dapur, dan mendarat di putaran taman bermain!</p>
+    <p class="tagline small">3 bab cerita · instrumen hidup · bahan bakar &amp; kerusakan · stall sungguhan · ring = checkpoint</p>
     <div id="mission-cards">
       <button class="mission-card" data-mission="1">
-        <span class="m-num">MISI 1</span><span class="m-title">RING RUN</span>
-        <span class="m-desc">Tembus 8 ring emas di atas Teluk Banda. Cepat &amp; rapi = bonus.</span>
+        <span class="m-num">BAB 1</span><span class="m-title">KAMAR ANAK 🧸</span>
+        <span class="m-desc">Belajar terbang! Kelilingi kasur raksasa, balok huruf &amp; rel kereta mainan, kumpulkan 5 ring, lalu pulang mendarat di meja belajar.</span>
       </button>
       <button class="mission-card" data-mission="2">
-        <span class="m-num">MISI 2</span><span class="m-title">VOLCANO SURVEY</span>
-        <span class="m-desc">Lingkari kawah Gunung Api dua putaran di ketinggian aman.</span>
+        <span class="m-num">BAB 2</span><span class="m-title">KABUR DARI RUMAH 🪟</span>
+        <span class="m-desc">Lepas landas dari meja makan, kumpulkan 5 ring melintasi ruang keluarga &amp; dapur raksasa, keluar lewat jendela selatan, dan mendarat di istana pasir di halaman! Crash? Lanjut dari checkpoint terakhir.</span>
       </button>
       <button class="mission-card" data-mission="3">
-        <span class="m-num">MISI 3</span><span class="m-title">FINAL LANDING</span>
-        <span class="m-desc">Mendarat mulus di runway Pulau Utama. Kecepatan &amp; sudut dinilai.</span>
+        <span class="m-num">BAB 3</span><span class="m-title">TAMAN BERMAIN ANAK 🎠</span>
+        <span class="m-desc">Slalom di antara dua set ayunan, lewat menara perosotan, kumpulkan 5 ring, dan mendarat di putaran yang berputar!</span>
       </button>
       <button class="mission-card" data-mission="0">
-        <span class="m-num">BEBAS</span><span class="m-title">TERBANG BEBAS</span>
-        <span class="m-desc">Jelajahi kepulauan tanpa misi. Bahan bakar tetap berjalan.</span>
+        <span class="m-num">BEBAS</span><span class="m-title">TERBANG BEBAS 🕊️</span>
+        <span class="m-desc">Jelajahi rumah raksasa tanpa ring. Bahan bakar tetap berjalan.</span>
       </button>
     </div>
-    <p class="controls-hint">Keyboard: <b>W/S</b> throttle · <b>A/D</b> belok banking · <b>↑/↓</b> naik/turun · <b>V</b> ganti kamera · <b>R</b> ulang</p>
+    <p class="controls-hint">Keyboard: <b>W/S</b> throttle · <b>A/D</b> belok banking · <b>↑/↓</b> naik/turun · <b>V</b> ganti kamera · <b>R</b> lanjut dari checkpoint · <b>1/2/3</b> pilih bab</p>
     <p class="controls-hint">HP: tombol sentuh di layar. Terlalu lambat = stall, pesawat jatuh.</p>
+  </div>
+</div>
+
+<!-- ======= Selingan cerita sebelum bab dimulai ======= -->
+<div id="story" class="hidden">
+  <div id="story-card">
+    <div id="story-label">BAB 1</div>
+    <h2 id="story-title">KAMAR ANAK</h2>
+    <p id="story-text"></p>
+    <p id="story-obj"></p>
+    <div id="story-buttons">
+      <button id="btn-start-story">MULAI TERBANG ▸</button>
+      <button id="btn-story-back">KEMBALI</button>
+    </div>
   </div>
 </div>
 
@@ -131,8 +145,9 @@
     <div id="banner-score">SKOR <span id="banner-score-num">0</span></div>
     <div id="banner-detail">—</div>
     <div id="banner-buttons">
+      <button id="btn-next" style="display:none">BAB BERIKUTNYA ▸</button>
       <button id="btn-again">TERBANG LAGI (R)</button>
-      <button id="btn-menu">PILIH MISI</button>
+      <button id="btn-menu">PILIH BAB</button>
     </div>
   </div>
 </div>

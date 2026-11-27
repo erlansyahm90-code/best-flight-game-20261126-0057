@@ -1,4 +1,4 @@
-// Archipelago Air — main.ts (Node 22, standard library only)
+// Toy Plane — Pesawat Mainan di Dalam Rumah (Rev8, resubmit) — main.ts (Node 22, standard library only)
 // Program penyerahan entri: menyalin game/ dan screenshots/ dari repo ini
 // ke direktori output, lalu menulis /output/dossier.json dengan library
 // make.fun yang di-vendor (vendor/makefun-game.ts).
