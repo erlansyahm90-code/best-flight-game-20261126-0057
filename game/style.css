@@ -1,198 +1,662 @@
-/* Toy Plane — HUD, menu, banner dan kontrol sentuh. */
+/* Toy Plane — seluruh tampilan 2D: panel instrumen HUD, menu pilih
+   bab, selingan cerita, banner akhir, bingkai kokpit, dan tombol
+   sentuh. Paleta bersama didefinisikan sekali di :root. */
 :root {
-  --panel-bg: rgba(6, 24, 44, 0.72);
-  --panel-border: rgba(140, 220, 255, 0.45);
-  --text: #eaf7ff;
   --accent: #ffd23f;
   --good: #39d98a;
   --warn: #ff9f1c;
   --bad: #ff4d4d;
+  --text: #eaf7ff;
+  --panel-bg: rgba(6, 24, 44, 0.72);
+  --panel-border: rgba(140, 220, 255, 0.45);
 }
-* { box-sizing: border-box; }
-body { font-family: "Segoe UI", system-ui, -apple-system, Roboto, Arial, sans-serif; color: var(--text); }
-.hidden { display: none !important; }
+* {
+  box-sizing: border-box;
+}
+body {
+  color: var(--text);
+  font-family: "Segoe UI", system-ui, -apple-system, Roboto, Arial, sans-serif;
+}
+.hidden {
+  display: none !important;
+}
 
-/* ---------- HUD ---------- */
-#hud { position: fixed; inset: 0; pointer-events: none; z-index: 5; }
+/* ---------- Instrumen HUD ---------- */
+#hud {
+  position: fixed;
+  inset: 0;
+  z-index: 5;
+  pointer-events: none;
+}
 .panel {
-  background: var(--panel-bg);
+  padding: 8px 12px;
   border: 1px solid var(--panel-border);
   border-radius: 10px;
-  padding: 8px 12px;
+  background: var(--panel-bg);
   backdrop-filter: blur(2px);
 }
-.label { font-size: 11px; letter-spacing: 2px; color: #9fd8ff; font-weight: 700; }
-.big { font-size: 30px; font-weight: 800; line-height: 1.05; font-variant-numeric: tabular-nums; }
-.big .unit { font-size: 14px; font-weight: 600; color: #9fd8ff; }
-.sub { font-size: 12px; color: #cfeaff; font-variant-numeric: tabular-nums; }
-.score { font-size: 20px; font-weight: 800; color: var(--accent); }
-.bar { height: 8px; background: rgba(255,255,255,0.18); border-radius: 4px; margin: 4px 0 2px; overflow: hidden; }
-.bar .fill { height: 100%; border-radius: 4px; transition: width 0.15s linear; }
-.fill.throttle { background: #4fc3f7; width: 0%; }
-.fill.alt { background: #7ee081; width: 0%; }
-.fill.fuel { background: var(--good); width: 100%; }
-.fill.damage { background: var(--bad); width: 0%; }
+.label {
+  color: #9fd8ff;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 2px;
+}
+.big {
+  font-size: 30px;
+  font-weight: 800;
+  line-height: 1.05;
+  font-variant-numeric: tabular-nums;
+}
+.big .unit {
+  color: #9fd8ff;
+  font-size: 14px;
+  font-weight: 600;
+}
+.sub {
+  color: #cfeaff;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+.score {
+  color: var(--accent);
+  font-size: 20px;
+  font-weight: 800;
+}
+.bar {
+  height: 8px;
+  margin: 4px 0 2px;
+  overflow: hidden;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.18);
+}
+.bar .fill {
+  height: 100%;
+  border-radius: 4px;
+  transition: width 0.15s linear;
+}
+.fill.throttle {
+  width: 0%;
+  background: #4fc3f7;
+}
+.fill.alt {
+  width: 0%;
+  background: #7ee081;
+}
+.fill.fuel {
+  width: 100%;
+  background: var(--good);
+}
+.fill.damage {
+  width: 0%;
+  background: var(--bad);
+}
 
 #hud-top {
-  position: absolute; top: 10px; left: 50%; transform: translateX(-50%);
-  display: flex; gap: 10px;
+  display: flex;
+  gap: 10px;
+  position: absolute;
+  top: 10px;
+  left: 50%;
+  transform: translateX(-50%);
 }
-#hud-top .panel { min-width: 168px; text-align: center; }
-#compass-strip { position: relative; height: 22px; overflow: hidden; margin-top: 2px;
-  border-top: 1px solid rgba(255,255,255,0.25); border-bottom: 1px solid rgba(255,255,255,0.25); }
-#compass-tape { position: absolute; top: 2px; left: 0; width: 100%; white-space: nowrap; font-size: 13px; font-weight: 700; letter-spacing: 1px; }
-#compass-needle { position: absolute; left: 50%; top: 0; transform: translateX(-50%); color: var(--accent); font-size: 12px; }
+#hud-top .panel {
+  min-width: 168px;
+  text-align: center;
+}
+#compass-strip {
+  position: relative;
+  height: 22px;
+  margin-top: 2px;
+  overflow: hidden;
+  border-top: 1px solid rgba(255, 255, 255, 0.25);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.25);
+}
+#compass-tape {
+  position: absolute;
+  top: 2px;
+  left: 0;
+  width: 100%;
+  white-space: nowrap;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 1px;
+}
+#compass-needle {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  color: var(--accent);
+  font-size: 12px;
+}
 
-#hud-left { position: absolute; top: 10px; left: 10px; display: flex; flex-direction: column; gap: 10px; width: 240px; }
-#hud-mission-name { font-size: 17px; font-weight: 800; color: var(--accent); }
-#hud-mission-obj { font-size: 13px; margin-top: 2px; }
-#hud-mission-progress { font-size: 13px; font-weight: 700; color: #9fd8ff; margin-top: 4px; }
+#hud-left {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  width: 240px;
+}
+#hud-mission-name {
+  color: var(--accent);
+  font-size: 17px;
+  font-weight: 800;
+}
+#hud-mission-obj {
+  margin-top: 2px;
+  font-size: 13px;
+}
+#hud-mission-progress {
+  margin-top: 4px;
+  color: #9fd8ff;
+  font-size: 13px;
+  font-weight: 700;
+}
 
-#hud-center { position: absolute; top: 32%; left: 50%; transform: translateX(-50%); text-align: center; width: 90%; }
+#hud-center {
+  position: absolute;
+  top: 32%;
+  left: 50%;
+  width: 90%;
+  transform: translateX(-50%);
+  text-align: center;
+}
 #hud-warning {
-  display: inline-block; background: rgba(180, 20, 20, 0.85); border: 2px solid #ffb3b3;
-  color: #fff; font-weight: 800; font-size: 20px; padding: 8px 18px; border-radius: 8px;
+  display: inline-block;
+  padding: 8px 18px;
+  border: 2px solid #ffb3b3;
+  border-radius: 8px;
+  background: rgba(180, 20, 20, 0.85);
+  color: #fff;
+  font-size: 20px;
+  font-weight: 800;
   animation: blink 0.5s steps(2) infinite;
 }
-@keyframes blink { 50% { opacity: 0.45; } }
+@keyframes blink {
+  50% { opacity: 0.45; }
+}
 #hud-toast {
-  display: inline-block; margin-top: 10px; background: rgba(6, 60, 30, 0.85); border: 1px solid var(--good);
-  color: #d9ffe9; font-weight: 700; font-size: 16px; padding: 6px 14px; border-radius: 8px;
+  display: inline-block;
+  margin-top: 10px;
+  padding: 6px 14px;
+  border: 1px solid var(--good);
+  border-radius: 8px;
+  background: rgba(6, 60, 30, 0.85);
+  color: #d9ffe9;
+  font-size: 16px;
+  font-weight: 700;
 }
 
-#hud-bottom { position: absolute; bottom: 10px; left: 50%; transform: translateX(-50%); }
-#panel-controls { display: flex; gap: 14px; font-size: 12px; white-space: nowrap; }
-#panel-controls b { color: var(--accent); }
+#hud-bottom {
+  position: absolute;
+  bottom: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+}
+#panel-controls {
+  display: flex;
+  gap: 14px;
+  white-space: nowrap;
+  font-size: 12px;
+}
+#panel-controls b {
+  color: var(--accent);
+}
 
-/* ---------- Cockpit frame ---------- */
-#cockpit { position: fixed; inset: 0; pointer-events: none; z-index: 4; }
-#cockpit-top { position: absolute; top: 0; left: 0; right: 0; height: 64px;
-  background: linear-gradient(#1c2733, #1c2733 70%, transparent); }
-#cockpit-left { position: absolute; top: 0; bottom: 0; left: 0; width: 90px;
-  background: linear-gradient(90deg, #1c2733, #1c2733 70%, transparent); }
-#cockpit-right { position: absolute; top: 0; bottom: 0; right: 0; width: 90px;
-  background: linear-gradient(-90deg, #1c2733, #1c2733 70%, transparent); }
-#cockpit-bottom { position: absolute; bottom: 0; left: 0; right: 0; height: 110px;
-  background: linear-gradient(transparent, #1c2733 35%); }
+/* ---------- Bingkai kokpit (mode kamera kokpit) ---------- */
+#cockpit {
+  position: fixed;
+  inset: 0;
+  z-index: 4;
+  pointer-events: none;
+}
+#cockpit-top {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 64px;
+  background: linear-gradient(#1c2733, #1c2733 70%, transparent);
+}
+#cockpit-left {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 90px;
+  background: linear-gradient(90deg, #1c2733, #1c2733 70%, transparent);
+}
+#cockpit-right {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  right: 0;
+  width: 90px;
+  background: linear-gradient(-90deg, #1c2733, #1c2733 70%, transparent);
+}
+#cockpit-bottom {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 110px;
+  background: linear-gradient(transparent, #1c2733 35%);
+}
 
-/* ---------- Kontrol sentuh ---------- */
-#touch { position: fixed; inset: 0; pointer-events: none; z-index: 6; }
-#touch-left { position: absolute; left: 12px; bottom: 14px; display: grid;
-  grid-template-columns: 1fr 1fr; gap: 8px; }
-#touch-right { position: absolute; right: 12px; bottom: 14px; display: flex; flex-direction: column; gap: 8px; }
+/* ---------- Tombol sentuh ---------- */
+#touch {
+  position: fixed;
+  inset: 0;
+  z-index: 6;
+  pointer-events: none;
+}
+#touch-left {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  position: absolute;
+  left: 12px;
+  bottom: 14px;
+}
+#touch-right {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  position: absolute;
+  right: 12px;
+  bottom: 14px;
+}
 #touch button {
-  pointer-events: auto; min-width: 74px; min-height: 52px; border-radius: 12px;
-  border: 2px solid rgba(255,255,255,0.55); background: rgba(6, 24, 44, 0.66);
-  color: #fff; font-weight: 800; font-size: 14px; touch-action: none; user-select: none;
+  min-width: 74px;
+  min-height: 52px;
+  border: 2px solid rgba(255, 255, 255, 0.55);
+  border-radius: 12px;
+  background: rgba(6, 24, 44, 0.66);
+  color: #fff;
+  font-size: 14px;
+  font-weight: 800;
+  pointer-events: auto;
+  touch-action: none;
+  user-select: none;
 }
-#touch button.active { background: rgba(255, 210, 63, 0.85); color: #123; }
+#touch button.active {
+  background: rgba(255, 210, 63, 0.85);
+  color: #123;
+}
 
-/* ---------- Menu ---------- */
-#menu { position: fixed; inset: 0; z-index: 10; display: flex; align-items: center; justify-content: center;
-  background: linear-gradient(180deg, rgba(4, 20, 40, 0.55), rgba(4, 20, 40, 0.82)); padding: 12px; }
-#menu-card { max-width: 720px; width: 100%; text-align: center; }
-#menu-card h1 { font-size: 52px; margin: 0; letter-spacing: 4px; color: #fff;
-  text-shadow: 0 3px 0 #0b5a8a, 0 6px 18px rgba(0,0,0,0.6); }
-.tagline { font-size: 17px; margin: 8px 0 0; color: #dff2ff; }
-.tagline.small { font-size: 13px; color: var(--accent); font-weight: 700; }
-#mission-cards { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 18px 0 6px; }
+/* ---------- Menu pilih bab ---------- */
+#menu {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: fixed;
+  inset: 0;
+  z-index: 10;
+  padding: 12px;
+  background: linear-gradient(180deg, rgba(4, 20, 40, 0.55), rgba(4, 20, 40, 0.82));
+}
+#menu-card {
+  width: 100%;
+  max-width: 720px;
+  text-align: center;
+}
+#menu-card h1 {
+  margin: 0;
+  color: #fff;
+  font-size: 52px;
+  letter-spacing: 4px;
+  text-shadow: 0 3px 0 #0b5a8a, 0 6px 18px rgba(0, 0, 0, 0.6);
+}
+.tagline {
+  margin: 8px 0 0;
+  color: #dff2ff;
+  font-size: 17px;
+}
+.tagline.small {
+  color: var(--accent);
+  font-size: 13px;
+  font-weight: 700;
+}
+#mission-cards {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin: 18px 0 6px;
+}
 .mission-card {
-  display: flex; flex-direction: column; gap: 3px; text-align: left; cursor: pointer;
-  background: var(--panel-bg); border: 2px solid var(--panel-border); border-radius: 12px;
-  padding: 12px 14px; color: var(--text);
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 12px 14px;
+  border: 2px solid var(--panel-border);
+  border-radius: 12px;
+  background: var(--panel-bg);
+  color: var(--text);
+  text-align: left;
+  cursor: pointer;
 }
-.mission-card:hover { border-color: var(--accent); background: rgba(20, 60, 100, 0.85); }
-.m-num { font-size: 11px; letter-spacing: 2px; color: #9fd8ff; font-weight: 700; }
-.m-title { font-size: 19px; font-weight: 800; }
-.m-desc { font-size: 13px; color: #cfeaff; }
-.controls-hint { font-size: 13px; color: #cfeaff; margin: 6px 0 0; }
-.controls-hint b { color: var(--accent); }
+.mission-card:hover {
+  border-color: var(--accent);
+  background: rgba(20, 60, 100, 0.85);
+}
+.m-num {
+  color: #9fd8ff;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 2px;
+}
+.m-title {
+  font-size: 19px;
+  font-weight: 800;
+}
+.m-desc {
+  color: #cfeaff;
+  font-size: 13px;
+}
+.controls-hint {
+  margin: 6px 0 0;
+  color: #cfeaff;
+  font-size: 13px;
+}
+.controls-hint b {
+  color: var(--accent);
+}
 
-/* ---------- Banner ---------- */
-#banner { position: fixed; inset: 0; z-index: 10; display: flex; align-items: center; justify-content: center;
-  background: rgba(4, 16, 32, 0.55); padding: 12px; }
-#banner-card { max-width: 560px; width: 100%; text-align: center; background: var(--panel-bg);
-  border: 2px solid var(--panel-border); border-radius: 16px; padding: 26px 22px; }
-#banner-title { font-size: 44px; margin: 0; letter-spacing: 2px; }
-#banner-card.success #banner-title { color: var(--good); }
-#banner-card.crash #banner-title { color: var(--bad); }
-#banner-sub { font-size: 16px; margin: 8px 0; }
-#banner-score { font-size: 26px; font-weight: 800; color: var(--accent); margin: 10px 0; }
-#banner-detail { font-size: 14px; color: #cfeaff; white-space: pre-line; }
-#banner-buttons { display: flex; gap: 10px; justify-content: center; margin-top: 18px; }
-#banner-buttons button {
-  cursor: pointer; border: 2px solid var(--accent); border-radius: 10px; padding: 10px 16px;
-  background: var(--accent); color: #123; font-weight: 800; font-size: 15px;
+/* ---------- Banner akhir permainan ---------- */
+#banner {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: fixed;
+  inset: 0;
+  z-index: 10;
+  padding: 12px;
+  background: rgba(4, 16, 32, 0.55);
 }
-#btn-menu { background: transparent !important; color: var(--accent) !important; }
+#banner-card {
+  width: 100%;
+  max-width: 560px;
+  padding: 26px 22px;
+  border: 2px solid var(--panel-border);
+  border-radius: 16px;
+  background: var(--panel-bg);
+  text-align: center;
+}
+#banner-title {
+  margin: 0;
+  font-size: 44px;
+  letter-spacing: 2px;
+}
+#banner-card.success #banner-title {
+  color: var(--good);
+}
+#banner-card.crash #banner-title {
+  color: var(--bad);
+}
+#banner-sub {
+  margin: 8px 0;
+  font-size: 16px;
+}
+#banner-score {
+  margin: 10px 0;
+  color: var(--accent);
+  font-size: 26px;
+  font-weight: 800;
+}
+#banner-detail {
+  color: #cfeaff;
+  font-size: 14px;
+  white-space: pre-line;
+}
+#banner-buttons {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  margin-top: 18px;
+}
+#banner-buttons button {
+  padding: 10px 16px;
+  border: 2px solid var(--accent);
+  border-radius: 10px;
+  background: var(--accent);
+  color: #123;
+  font-size: 15px;
+  font-weight: 800;
+  cursor: pointer;
+}
+#btn-menu {
+  background: transparent !important;
+  color: var(--accent) !important;
+}
 
 /* ---------- Layar sedang (≤1150px, mis. 960×540) ----------
-   Panel atas menyusut + kolom kiri menyempit supaya TIDAK PERNAH tumpang tindih:
-   pada 960px, klaster atas ≈412px mulai di x≈274, kolom kiri berakhir x=215. */
+   Klaster panel atas menyusut dan kolom kiri menyempit supaya tidak
+   pernah tumpang tindih: pada 960px klaster atas ≈412px mulai di
+   x≈274, sedangkan kolom kiri berakhir di x=215. */
 @media (max-width: 1150px) {
-  #hud-top { gap: 8px; max-width: calc(100% - 16px); }
-  #hud-top .panel { min-width: 132px; padding: 6px 9px; }
-  .big { font-size: 25px; }
-  .big .unit { font-size: 12px; }
-  #hud-left { width: 205px; }
-  #hud-mission-name { font-size: 15px; }
-  #hud-mission-obj { font-size: 12px; }
-  #panel-controls { gap: 10px; font-size: 11px; }
+  #hud-top {
+    gap: 8px;
+    max-width: calc(100% - 16px);
+  }
+  #hud-top .panel {
+    min-width: 132px;
+    padding: 6px 9px;
+  }
+  .big {
+    font-size: 25px;
+  }
+  .big .unit {
+    font-size: 12px;
+  }
+  #hud-left {
+    width: 205px;
+  }
+  #hud-mission-name {
+    font-size: 15px;
+  }
+  #hud-mission-obj {
+    font-size: 12px;
+  }
+  #panel-controls {
+    gap: 10px;
+    font-size: 11px;
+  }
 }
 
 /* ---------- Layar sempit (≤860px, mis. HP landscape ~800px) ----------
-   Pada 800px, klaster atas ≈352px mulai di x≈224, kolom kiri berakhir x=182. */
+   Pada 800px klaster atas ≈352px mulai di x≈224 dan kolom kiri
+   berakhir di x=182; klaster atas menempel ke kanan layar. */
 @media (max-width: 860px) {
-  #hud-top .panel { min-width: 0; flex: 1 1 0; padding: 5px 7px; }
-  #hud-top { left: 196px; right: 8px; transform: none; justify-content: flex-end; }
-  .big { font-size: 21px; }
-  .label { font-size: 10px; letter-spacing: 1px; }
-  .sub { font-size: 11px; }
-  #compass-tape { font-size: 12px; }
-  #hud-left { width: 172px; }
-  #hud-left .panel { padding: 6px 9px; }
-  #hud-mission-name { font-size: 14px; }
-  #hud-mission-obj { font-size: 12px; }
-  #hud-mission-progress { font-size: 12px; }
-  .score { font-size: 17px; }
+  #hud-top {
+    left: 196px;
+    right: 8px;
+    transform: none;
+    justify-content: flex-end;
+  }
+  #hud-top .panel {
+    min-width: 0;
+    flex: 1 1 0;
+    padding: 5px 7px;
+  }
+  .big {
+    font-size: 21px;
+  }
+  .label {
+    font-size: 10px;
+    letter-spacing: 1px;
+  }
+  .sub {
+    font-size: 11px;
+  }
+  #compass-tape {
+    font-size: 12px;
+  }
+  #hud-left {
+    width: 172px;
+  }
+  #hud-left .panel {
+    padding: 6px 9px;
+  }
+  #hud-mission-name {
+    font-size: 14px;
+  }
+  #hud-mission-obj {
+    font-size: 12px;
+  }
+  #hud-mission-progress {
+    font-size: 12px;
+  }
+  .score {
+    font-size: 17px;
+  }
 }
 
-/* ---------- Layar kecil (HP) ---------- */
+/* ---------- Layar kecil / HP (≤760px) ---------- */
 @media (max-width: 760px) {
-  #menu-card h1 { font-size: 34px; }
-  #hud-top .panel { min-width: 0; flex: 1; padding: 6px 8px; }
-  #hud-top { left: 8px; right: 8px; transform: none; }
-  .big { font-size: 22px; }
-  #hud-left { width: 168px; top: 118px; bottom: auto; }
-  #hud-left .panel { padding: 6px 9px; }
-  #hud-mission-obj { font-size: 12px; }
-  #panel-controls { display: none; }
-  /* Toast misi jangan menutupi panel skor: geser ke kanan panel kiri */
-  #hud-center { top: 130px; left: 186px; right: 8px; transform: none; width: auto; }
-  #hud-toast { font-size: 13px; padding: 5px 10px; }
-  #hud-warning { font-size: 15px; padding: 6px 10px; }
-  #mission-cards { grid-template-columns: 1fr; }
-  #banner-title { font-size: 32px; }
+  #menu-card h1 {
+    font-size: 34px;
+  }
+  #hud-top {
+    left: 8px;
+    right: 8px;
+    transform: none;
+  }
+  #hud-top .panel {
+    min-width: 0;
+    flex: 1;
+    padding: 6px 8px;
+  }
+  .big {
+    font-size: 22px;
+  }
+  #hud-left {
+    width: 168px;
+    top: 118px;
+    bottom: auto;
+  }
+  #hud-left .panel {
+    padding: 6px 9px;
+  }
+  #hud-mission-obj {
+    font-size: 12px;
+  }
+  #panel-controls {
+    display: none;
+  }
+  /* Toast misi digeser ke kanan panel kiri supaya tidak menutupinya. */
+  #hud-center {
+    top: 130px;
+    left: 186px;
+    right: 8px;
+    width: auto;
+    transform: none;
+  }
+  #hud-toast {
+    padding: 5px 10px;
+    font-size: 13px;
+  }
+  #hud-warning {
+    padding: 6px 10px;
+    font-size: 15px;
+  }
+  #mission-cards {
+    grid-template-columns: 1fr;
+  }
+  #banner-title {
+    font-size: 32px;
+  }
 }
 
-/* ===== Selingan cerita antar-bab (struktur 3 bab) ===== */
-#story { position: fixed; inset: 0; z-index: 10; display: flex; align-items: center; justify-content: center;
-  background: radial-gradient(ellipse at center, rgba(10, 20, 40, 0.25), rgba(10, 20, 40, 0.55)); padding: 16px; }
-#story-card { max-width: 560px; width: 100%; text-align: center; background: var(--panel-bg);
-  border-radius: 18px; padding: 30px 34px; box-shadow: 0 18px 50px rgba(0, 0, 0, 0.45); }
-#story-label { display: inline-block; background: #2e8f86; color: #fff; font-weight: 800;
-  letter-spacing: 3px; font-size: 13px; padding: 5px 14px; border-radius: 999px; }
-#story-title { font-size: 36px; margin: 12px 0 4px; letter-spacing: 2px; color: #fff; }
-#story-text { font-size: 16px; line-height: 1.65; color: #eaf4ff; margin: 12px auto 8px; max-width: 480px; }
-#story-obj { font-size: 14.5px; font-weight: 700; color: var(--accent); margin: 8px auto 4px; max-width: 480px; line-height: 1.5; }
-#story-buttons { display: flex; gap: 10px; justify-content: center; margin-top: 20px; flex-wrap: wrap; }
-#story-buttons button { font: inherit; font-weight: 800; letter-spacing: 1px; cursor: pointer;
-  border: none; border-radius: 12px; padding: 12px 22px; background: #35507a; color: #eaf4ff; }
-#story-buttons button:hover { filter: brightness(1.2); }
-#btn-start-story { background: var(--accent) !important; color: #231a04 !important; }
-#btn-next { background: var(--accent) !important; color: #231a04 !important; }
+/* ===== Selingan cerita antar-bab ===== */
+#story {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: fixed;
+  inset: 0;
+  z-index: 10;
+  padding: 16px;
+  background: radial-gradient(ellipse at center, rgba(10, 20, 40, 0.25), rgba(10, 20, 40, 0.55));
+}
+#story-card {
+  width: 100%;
+  max-width: 560px;
+  padding: 30px 34px;
+  border-radius: 18px;
+  background: var(--panel-bg);
+  box-shadow: 0 18px 50px rgba(0, 0, 0, 0.45);
+  text-align: center;
+}
+#story-label {
+  display: inline-block;
+  padding: 5px 14px;
+  border-radius: 999px;
+  background: #2e8f86;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 3px;
+}
+#story-title {
+  margin: 12px 0 4px;
+  color: #fff;
+  font-size: 36px;
+  letter-spacing: 2px;
+}
+#story-text {
+  max-width: 480px;
+  margin: 12px auto 8px;
+  color: #eaf4ff;
+  font-size: 16px;
+  line-height: 1.65;
+}
+#story-obj {
+  max-width: 480px;
+  margin: 8px auto 4px;
+  color: var(--accent);
+  font-size: 14.5px;
+  font-weight: 700;
+  line-height: 1.5;
+}
+#story-buttons {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  flex-wrap: wrap;
+  margin-top: 20px;
+}
+#story-buttons button {
+  padding: 12px 22px;
+  border: none;
+  border-radius: 12px;
+  background: #35507a;
+  color: #eaf4ff;
+  font: inherit;
+  font-weight: 800;
+  letter-spacing: 1px;
+  cursor: pointer;
+}
+#story-buttons button:hover {
+  filter: brightness(1.2);
+}
+#btn-start-story {
+  background: var(--accent) !important;
+  color: #231a04 !important;
+}
+#btn-next {
+  background: var(--accent) !important;
+  color: #231a04 !important;
+}
 @media (max-width: 640px) {
-  #story-card { padding: 22px 18px; }
-  #story-title { font-size: 27px; }
-  #story-text { font-size: 14.5px; }
+  #story-card {
+    padding: 22px 18px;
+  }
+  #story-title {
+    font-size: 27px;
+  }
+  #story-text {
+    font-size: 14.5px;
+  }
 }

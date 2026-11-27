@@ -2,41 +2,68 @@
 <html lang="id">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<meta content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" name="viewport">
 <title>Toy Plane — Pesawat Mainan di Dalam Rumah</title>
 <style>
-  html, body { margin: 0; height: 100%; overflow: hidden; background: #3a2410; }
-  #scene { position: fixed; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; }
-  #status { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+  html, body {
+    margin: 0;
+    height: 100%;
+    overflow: hidden;
+    background: #3a2410;
+  }
+  #scene {
+    position: fixed;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    display: block;
+    touch-action: none;
+  }
+  /* Elemen status khusus pembaca layar: ada di DOM, tak terlihat. */
+  #status {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
 </style>
-<link rel="stylesheet" href="./style.css">
+<link href="./style.css" rel="stylesheet">
 <script type="importmap">
-{ "imports": { "three": "./vendor/three/three.module.min.js" } }
+{
+  "imports": {
+    "three": "./vendor/three/three.module.min.js"
+  }
+}
 </script>
 </head>
 <body>
-<canvas id="scene" aria-label="Toy Plane: pesawat mainan terbang di dalam rumah raksasa"></canvas>
-<p id="status" role="status" aria-live="polite"></p>
+<canvas aria-label="Toy Plane: pesawat mainan terbang di dalam rumah raksasa" id="scene"></canvas>
+<p aria-live="polite" id="status" role="status"></p>
 
-<!-- ======= HUD ======= -->
-<div id="hud" class="hidden">
+<!-- ======= Lapisan instrumen (HUD) ======= -->
+<div class="hidden" id="hud">
   <div id="hud-top">
     <div class="panel" id="panel-speed">
       <div class="label">KECEPATAN</div>
       <div class="big"><span id="hud-speed">0</span><span class="unit"> kt</span></div>
-      <div class="bar"><div id="bar-throttle" class="fill throttle"></div></div>
+      <div class="bar"><div class="fill throttle" id="bar-throttle"></div></div>
       <div class="sub">THR <span id="hud-throttle">0</span>%</div>
     </div>
     <div class="panel" id="panel-compass">
       <div class="label">HEADING</div>
       <div class="big"><span id="hud-heading">000</span>°</div>
-      <div id="compass-strip"><div id="compass-tape"></div><div id="compass-needle">▲</div></div>
+      <div id="compass-strip">
+        <div id="compass-tape"></div>
+        <div id="compass-needle">▲</div>
+      </div>
       <div class="sub" id="hud-heading-name">UTARA</div>
     </div>
     <div class="panel" id="panel-alt">
       <div class="label">KETINGGIAN</div>
       <div class="big"><span id="hud-alt">0</span><span class="unit"> m</span></div>
-      <div class="bar"><div id="bar-alt" class="fill alt"></div></div>
+      <div class="bar"><div class="fill alt" id="bar-alt"></div></div>
       <div class="sub">VERT <span id="hud-vs">0</span> m/s</div>
     </div>
   </div>
@@ -49,52 +76,56 @@
       <div id="hud-mission-progress">—</div>
     </div>
     <div class="panel">
-      <div class="label">SKOR <span id="hud-score" class="score">0</span></div>
+      <div class="label">SKOR <span class="score" id="hud-score">0</span></div>
       <div class="sub">WAKTU <span id="hud-time">00:00</span></div>
       <div class="sub">BAHAN BAKAR</div>
-      <div class="bar"><div id="bar-fuel" class="fill fuel"></div></div>
+      <div class="bar"><div class="fill fuel" id="bar-fuel"></div></div>
       <div class="sub">KERUSAKAN <span id="hud-damage">0</span>%</div>
-      <div class="bar"><div id="bar-damage" class="fill damage"></div></div>
+      <div class="bar"><div class="fill damage" id="bar-damage"></div></div>
     </div>
   </div>
 
   <div id="hud-center">
-    <div id="hud-warning" class="hidden">⚠ STALL — TAMBAH THROTTLE!</div>
-    <div id="hud-toast" class="hidden"></div>
+    <div class="hidden" id="hud-warning">⚠ STALL — TAMBAH THROTTLE!</div>
+    <div class="hidden" id="hud-toast"></div>
   </div>
 
   <div id="hud-bottom">
     <div class="panel" id="panel-controls">
-      <span><b>W/S</b> throttle</span><span><b>A/D</b> belok</span><span><b>↑/↓</b> pitch</span>
-      <span><b>V</b> kamera</span><span><b>R</b> checkpoint</span><span><b>1/2/3</b> bab</span>
+      <span><b>W/S</b> throttle</span>
+      <span><b>A/D</b> belok</span>
+      <span><b>↑/↓</b> pitch</span>
+      <span><b>V</b> kamera</span>
+      <span><b>R</b> checkpoint</span>
+      <span><b>1/2/3</b> bab</span>
     </div>
   </div>
 </div>
 
-<!-- ======= Cockpit frame (hanya mode cockpit) ======= -->
-<div id="cockpit" class="hidden">
+<!-- ======= Bingkai kokpit (tampil hanya pada mode kamera kokpit) ======= -->
+<div class="hidden" id="cockpit">
   <div id="cockpit-top"></div>
   <div id="cockpit-left"></div>
   <div id="cockpit-right"></div>
   <div id="cockpit-bottom"></div>
 </div>
 
-<!-- ======= Kontrol sentuh (HP) ======= -->
-<div id="touch" class="hidden">
+<!-- ======= Tombol sentuh untuk layar HP ======= -->
+<div class="hidden" id="touch">
   <div id="touch-left">
-    <button id="btn-left" data-k="left">◀ BELOK</button>
-    <button id="btn-right" data-k="right">BELOK ▶</button>
-    <button id="btn-down" data-k="down">▼ TURUN</button>
-    <button id="btn-up" data-k="up">▲ NAIK</button>
+    <button data-k="left" id="btn-left">◀ BELOK</button>
+    <button data-k="right" id="btn-right">BELOK ▶</button>
+    <button data-k="down" id="btn-down">▼ TURUN</button>
+    <button data-k="up" id="btn-up">▲ NAIK</button>
   </div>
   <div id="touch-right">
-    <button id="btn-thr-up" data-k="thrUp">THR +</button>
-    <button id="btn-thr-dn" data-k="thrDn">THR −</button>
-    <button id="btn-cam" data-k="cam">KAMERA</button>
+    <button data-k="thrUp" id="btn-thr-up">THR +</button>
+    <button data-k="thrDn" id="btn-thr-dn">THR −</button>
+    <button data-k="cam" id="btn-cam">KAMERA</button>
   </div>
 </div>
 
-<!-- ======= Layar awal ======= -->
+<!-- ======= Menu utama: pilih bab ======= -->
 <div id="menu">
   <div id="menu-card">
     <h1>TOY PLANE</h1>
@@ -102,19 +133,23 @@
     <p class="tagline small">3 bab cerita · instrumen hidup · bahan bakar &amp; kerusakan · stall sungguhan · ring = checkpoint</p>
     <div id="mission-cards">
       <button class="mission-card" data-mission="1">
-        <span class="m-num">BAB 1</span><span class="m-title">KAMAR ANAK 🧸</span>
+        <span class="m-num">BAB 1</span>
+        <span class="m-title">KAMAR ANAK 🧸</span>
         <span class="m-desc">Belajar terbang! Kelilingi kasur raksasa, balok huruf &amp; rel kereta mainan, kumpulkan 5 ring, lalu pulang mendarat di meja belajar.</span>
       </button>
       <button class="mission-card" data-mission="2">
-        <span class="m-num">BAB 2</span><span class="m-title">KABUR DARI RUMAH 🪟</span>
+        <span class="m-num">BAB 2</span>
+        <span class="m-title">KABUR DARI RUMAH 🪟</span>
         <span class="m-desc">Lepas landas dari meja makan, kumpulkan 5 ring melintasi ruang keluarga &amp; dapur raksasa, keluar lewat jendela selatan, dan mendarat di istana pasir di halaman! Crash? Lanjut dari checkpoint terakhir.</span>
       </button>
       <button class="mission-card" data-mission="3">
-        <span class="m-num">BAB 3</span><span class="m-title">TAMAN BERMAIN ANAK 🎠</span>
+        <span class="m-num">BAB 3</span>
+        <span class="m-title">TAMAN BERMAIN ANAK 🎠</span>
         <span class="m-desc">Slalom di antara dua set ayunan, lewat menara perosotan, kumpulkan 5 ring, dan mendarat di putaran yang berputar!</span>
       </button>
       <button class="mission-card" data-mission="0">
-        <span class="m-num">BEBAS</span><span class="m-title">TERBANG BEBAS 🕊️</span>
+        <span class="m-num">BEBAS</span>
+        <span class="m-title">TERBANG BEBAS 🕊️</span>
         <span class="m-desc">Jelajahi rumah raksasa tanpa ring. Bahan bakar tetap berjalan.</span>
       </button>
     </div>
@@ -123,8 +158,8 @@
   </div>
 </div>
 
-<!-- ======= Selingan cerita sebelum bab dimulai ======= -->
-<div id="story" class="hidden">
+<!-- ======= Selingan cerita yang mendahului tiap bab ======= -->
+<div class="hidden" id="story">
   <div id="story-card">
     <div id="story-label">BAB 1</div>
     <h2 id="story-title">KAMAR ANAK</h2>
@@ -137,8 +172,8 @@
   </div>
 </div>
 
-<!-- ======= Banner akhir (landing / crash / misi selesai) ======= -->
-<div id="banner" class="hidden">
+<!-- ======= Banner penutup: hasil pendaratan / tabrakan / misi ======= -->
+<div class="hidden" id="banner">
   <div id="banner-card">
     <h2 id="banner-title">MENDARAT!</h2>
     <p id="banner-sub">—</p>
@@ -152,6 +187,6 @@
   </div>
 </div>
 
-<script type="module" src="./main.js"></script>
+<script src="./main.js" type="module"></script>
 </body>
 </html>

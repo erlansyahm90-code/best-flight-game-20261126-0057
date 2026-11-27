@@ -1,9 +1,11 @@
 // Toy Plane — main.js
-// Loop game, input keyboard + sentuh, kamera chase/cockpit, menu PILIH BAB
-// dengan selingan cerita (story interstitial), preset screenshot
-// (?shot=...), dan pengait playtest. Tiga bab cerita dalam tiga dunia:
-// Bab 1 kamar anak (bedroom.js), Bab 2 rumah (terrain.js), Bab 3 taman
-// bermain (playground.js) — perpindahan dunia lewat worlds.js.
+// Rangka utama permainan: membuat renderer/scene/kamera, memasang
+// input keyboard dan sentuh, menggerakkan loop, mengelola menu PILIH
+// BAB dengan selingan cerita antar-bab, preset screenshot lewat query
+// (?shot=...), dan pengait playtest window.__toyplane. Tiga bab cerita
+// tinggal di tiga dunia — Bab 1 kamar anak (bedroom.js), Bab 2 rumah
+// (terrain.js), Bab 3 taman bermain (playground.js) — dan perpindahan
+// antar-dunia dirutekan lewat worlds.js.
 import * as THREE from 'three';
 import { buildWorlds, setWorld, tickWorld, terrainHeight, activeRunway } from './worlds.js';
 import { CHAPTERS } from './chapters.js';
@@ -12,12 +14,12 @@ import { FlightState } from './physics.js';
 import { Hud } from './hud.js';
 import { Mission } from './missions.js';
 
-const $ = (id) => document.getElementById(id);
-const params = new URLSearchParams(location.search);
-const isTouchDevice = ('ontouchstart' in window) || window.innerWidth < 760 || params.has('touch');
+const byId = (id) => document.getElementById(id);
+const query = new URLSearchParams(location.search);
+const touchCapable = ('ontouchstart' in window) || window.innerWidth < 760 || query.has('touch');
 
-// ---------- Scene ----------
-const canvas = $('scene');
+// ---------- Panggung: renderer, scene, kamera, cahaya ----------
+const canvas = byId('scene');
 const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
 renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
 renderer.setSize(innerWidth, innerHeight);
@@ -39,92 +41,92 @@ buildWorlds(scene);
 const { group: planeGroup, propeller, propDisc } = buildPlane();
 scene.add(planeGroup);
 
-// ---------- State ----------
+// ---------- Keadaan permainan ----------
 const state = new FlightState();
 const hud = new Hud();
 let mission = null;
 let cameraMode = 'chase'; // 'chase' | 'cockpit'
 let started = false;
 let ended = false;
-let menuOrbit = 0;
+let orbitAngle = 0;
 
-// Suasana langit per dunia: kamar/rumah = cahaya siang hangat dari
-// jendela; taman bermain = langit biru terbuka (latar + kabut diselaraskan).
-function applyMood(worldId) {
-  if (worldId === 3) {
-    scene.background.set(0x9fd3f0);
-    scene.fog.color.set(0xcfe4f7);
-  } else {
-    scene.background.set(0xffd9a0);
-    scene.fog.color.set(0xf3d9ae);
-  }
+// Langit mengikuti dunia: kamar/rumah disinari siang hangat dari
+// jendela; taman bermain di bawah langit biru terbuka (latar dan
+// warna kabut diganti berpasangan).
+function setWorldMood(worldId) {
+  const garden = worldId === 3;
+  scene.background.set(garden ? 0x9fd3f0 : 0xffd9a0);
+  scene.fog.color.set(garden ? 0xcfe4f7 : 0xf3d9ae);
 }
 
-let stagedChapter = 0; // bab yang sedang ditampilkan di layar cerita
-// Fokus orbit kamera menu: default meja makan dunia rumah (pesawat parkir);
-// saat bab dipilih, fokus pindah ke titik spawn bab itu.
+let stagedId = 0; // bab yang sedang dipajang di layar cerita
+// Titik fokus orbit kamera menu + radiusnya: awalnya meja makan dunia
+// rumah (tempat pesawat parkir); pindah ke titik spawn bab yang dipilih.
 const menuFocus = { x: -300, y: 26, z: 0, r: 78 };
 
-// Parkir pesawat di atas meja makan (dunia rumah) untuk latar menu
-function parkInHouse() {
+// Parkir pesawat di atas meja makan (dunia rumah) sebagai latar menu.
+function parkForMenu() {
   setWorld(2);
-  applyMood(2);
+  setWorldMood(2);
   state.reset(new THREE.Vector3(-305, activeRunway().height + 1.4, 0), 270);
   state.throttle = 0;
   state.speed = 0;
   menuFocus.x = -300; menuFocus.y = 26; menuFocus.z = 0; menuFocus.r = 78;
-  syncPlaneMesh();
+  matchPlaneToState();
 }
-parkInHouse();
+parkForMenu();
 
 // ---------- Input ----------
+// Bendera input bersama yang dibaca FlightState.update tiap frame.
 const input = { thrUp: false, thrDn: false, left: false, right: false, up: false, down: false };
-const KEYMAP = {
+const KEY_TO_ACTION = {
   KeyW: 'thrUp', ArrowUp: 'up', KeyS: 'thrDn', ArrowDown: 'down',
   KeyA: 'left', ArrowLeft: 'left', KeyD: 'right', ArrowRight: 'right',
 };
 addEventListener('keydown', (e) => {
-  if (KEYMAP[e.key] || KEYMAP[e.code]) { input[KEYMAP[e.key] || KEYMAP[e.code]] = true; e.preventDefault(); }
+  const action = KEY_TO_ACTION[e.key] || KEY_TO_ACTION[e.code];
+  if (action) { input[action] = true; e.preventDefault(); }
   if (e.code === 'KeyV') toggleCamera();
   if (e.code === 'KeyR') restartMission();
   if (!started && (e.code === 'Digit1' || e.code === 'Digit2' || e.code === 'Digit3')) {
     stageChapter(Number(e.code.slice(-1)));
   }
   if (e.code === 'Digit0' && !started) startMission(0);
-  if (e.code === 'Enter' && !started && stagedChapter) startMission(stagedChapter);
+  if (e.code === 'Enter' && !started && stagedId) startMission(stagedId);
 });
 addEventListener('keyup', (e) => {
-  if (KEYMAP[e.key] || KEYMAP[e.code]) input[KEYMAP[e.key] || KEYMAP[e.code]] = false;
+  const action = KEY_TO_ACTION[e.key] || KEY_TO_ACTION[e.code];
+  if (action) input[action] = false;
 });
 
-// Kontrol sentuh
-function bindTouch(id, key) {
-  const btn = $(id);
-  const on = (e) => { e.preventDefault(); input[key] = true; btn.classList.add('active'); };
-  const off = (e) => { e.preventDefault(); input[key] = false; btn.classList.remove('active'); };
-  btn.addEventListener('pointerdown', on);
-  btn.addEventListener('pointerup', off);
-  btn.addEventListener('pointerleave', off);
-  btn.addEventListener('pointercancel', off);
+// Tombol sentuh: tekan menahan bendera, lepas/keluar melepasnya.
+function wireTouchButton(id, actionKey) {
+  const btn = byId(id);
+  const press = (e) => { e.preventDefault(); input[actionKey] = true; btn.classList.add('active'); };
+  const release = (e) => { e.preventDefault(); input[actionKey] = false; btn.classList.remove('active'); };
+  btn.addEventListener('pointerdown', press);
+  btn.addEventListener('pointerup', release);
+  btn.addEventListener('pointerleave', release);
+  btn.addEventListener('pointercancel', release);
 }
-bindTouch('btn-left', 'left');
-bindTouch('btn-right', 'right');
-bindTouch('btn-up', 'up');
-bindTouch('btn-down', 'down');
-bindTouch('btn-thr-up', 'thrUp');
-bindTouch('btn-thr-dn', 'thrDn');
-$('btn-cam').addEventListener('click', toggleCamera);
-if (isTouchDevice) $('touch').classList.remove('hidden');
+wireTouchButton('btn-left', 'left');
+wireTouchButton('btn-right', 'right');
+wireTouchButton('btn-up', 'up');
+wireTouchButton('btn-down', 'down');
+wireTouchButton('btn-thr-up', 'thrUp');
+wireTouchButton('btn-thr-dn', 'thrDn');
+byId('btn-cam').addEventListener('click', toggleCamera);
+if (touchCapable) byId('touch').classList.remove('hidden');
 
-// ---------- Bab & misi ----------
-// Memilih kartu bab membuka SELINGAN CERITA dulu: dunia bab dimuat,
-// pesawat diparkir di titik spawn, ring bab terlihat — MULAI TERBANG
-// baru menjalankan babnya.
+// ---------- Alur bab & misi ----------
+// Memilih kartu bab TIDAK langsung terbang: dunia bab dimuat, pesawat
+// diparkir di titik spawn dengan ring terlihat, dan SELINGAN CERITA
+// ditampilkan — MULAI TERBANG-lah yang menjalankan babnya.
 function stageChapter(id) {
   const ch = CHAPTERS[id];
-  stagedChapter = id;
+  stagedId = id;
   setWorld(ch.world);
-  applyMood(ch.world);
+  setWorldMood(ch.world);
   if (mission) mission.dispose();
   mission = new Mission(id, scene);
   state.reset(mission.spawn.pos, mission.spawn.heading);
@@ -132,49 +134,50 @@ function stageChapter(id) {
   state.speed = 0;
   menuFocus.x = mission.spawn.pos.x; menuFocus.y = mission.spawn.pos.y;
   menuFocus.z = mission.spawn.pos.z; menuFocus.r = 62;
-  syncPlaneMesh();
-  $('story-label').textContent = ch.label;
-  $('story-title').textContent = ch.title;
-  $('story-text').textContent = ch.story;
-  $('story-obj').textContent = '🎯 ' + ch.objective;
-  $('menu').classList.add('hidden');
-  $('story').classList.remove('hidden');
+  matchPlaneToState();
+  byId('story-label').textContent = ch.label;
+  byId('story-title').textContent = ch.title;
+  byId('story-text').textContent = ch.story;
+  byId('story-obj').textContent = '🎯 ' + ch.objective;
+  byId('menu').classList.add('hidden');
+  byId('story').classList.remove('hidden');
 }
 
 function startMission(id) {
-  setWorld(id === 0 ? 2 : CHAPTERS[id].world);
-  applyMood(id === 0 ? 2 : CHAPTERS[id].world);
+  const worldId = id === 0 ? 2 : CHAPTERS[id].world;
+  setWorld(worldId);
+  setWorldMood(worldId);
   if (mission) mission.dispose();
   mission = new Mission(id, scene);
-  const s = mission.spawn;
-  state.reset(s.pos, s.heading);
+  const spawn = mission.spawn;
+  state.reset(spawn.pos, spawn.heading);
   state.throttle = mission.data.initialThrottle;
   state.speed = mission.data.initialSpeed;
   mission.start(0);
   ended = false;
   started = true;
-  stagedChapter = 0;
+  stagedId = 0;
   hud.hideBanner();
   hud.show();
-  $('menu').classList.add('hidden');
-  $('story').classList.add('hidden');
-  $('cockpit').classList.toggle('hidden', cameraMode !== 'cockpit');
+  byId('menu').classList.add('hidden');
+  byId('story').classList.add('hidden');
+  byId('cockpit').classList.toggle('hidden', cameraMode !== 'cockpit');
   hud.toast(mission.name + ' — ' + mission.objective, 3400);
-  syncPlaneMesh();
+  matchPlaneToState();
 }
 
 function restartMission() {
   if (!mission) return;
-  // Bab dengan checkpoint tersimpan: R / TERBANG LAGI = respawn di ring
-  // checkpoint terakhir (skor & ring yang sudah lewat TIDAK hilang).
-  // Selain itu (atau bab sudah selesai): restart penuh seperti biasa.
+  // Bab ber-ring yang belum selesai dan punya checkpoint: R / TERBANG
+  // LAGI berarti respawn di ring terakhir (skor dan ring yang sudah
+  // lewat TIDAK hilang). Di luar itu: restart penuh dari spawn.
   const cp = (!mission.done && mission.hasRings) ? mission.checkpointRespawn() : null;
   if (cp) {
     state.respawn(cp.pos, cp.headingDeg);
     ended = false;
     hud.hideBanner();
     hud.toast(`CHECKPOINT ${mission.ringIndex}/${mission.ringPositions.length} — LANJUT DARI SINI! Skor & ring tersimpan`, 2800);
-    syncPlaneMesh();
+    matchPlaneToState();
     return;
   }
   startMission(mission.id);
@@ -184,21 +187,22 @@ function backToMenu() {
   if (mission) { mission.dispose(); mission = null; }
   started = false;
   ended = false;
-  stagedChapter = 0;
+  stagedId = 0;
   hud.hide();
   hud.hideBanner();
-  $('story').classList.add('hidden');
-  $('menu').classList.remove('hidden');
-  $('cockpit').classList.add('hidden');
-  parkInHouse();
+  byId('story').classList.add('hidden');
+  byId('menu').classList.remove('hidden');
+  byId('cockpit').classList.add('hidden');
+  parkForMenu();
 }
 
 function toggleCamera() {
   cameraMode = cameraMode === 'chase' ? 'cockpit' : 'chase';
-  $('cockpit').classList.toggle('hidden', cameraMode !== 'cockpit' || !started);
+  byId('cockpit').classList.toggle('hidden', cameraMode !== 'cockpit' || !started);
   hud.toast(cameraMode === 'cockpit' ? 'KAMERA KOKPIT' : 'KAMERA CHASE', 1200);
 }
 
+// Pemasangan tombol-tombol layar (kartu bab, cerita, banner).
 document.querySelectorAll('.mission-card').forEach((btn) => {
   btn.addEventListener('click', () => {
     const id = Number(btn.dataset.mission);
@@ -206,19 +210,20 @@ document.querySelectorAll('.mission-card').forEach((btn) => {
     else stageChapter(id);
   });
 });
-$('btn-start-story').addEventListener('click', () => {
-  if (stagedChapter) startMission(stagedChapter);
+byId('btn-start-story').addEventListener('click', () => {
+  if (stagedId) startMission(stagedId);
 });
-$('btn-story-back').addEventListener('click', backToMenu);
-$('btn-again').addEventListener('click', restartMission);
-$('btn-menu').addEventListener('click', backToMenu);
-$('btn-next').addEventListener('click', () => {
+byId('btn-story-back').addEventListener('click', backToMenu);
+byId('btn-again').addEventListener('click', restartMission);
+byId('btn-menu').addEventListener('click', backToMenu);
+byId('btn-next').addEventListener('click', () => {
   if (mission && mission.id >= 1 && mission.id < 3) stageChapter(mission.id + 1);
 });
 
-// ---------- Sinkron mesh pesawat dengan state ----------
-const tmpFwd = new THREE.Vector3();
-function syncPlaneMesh() {
+// ---------- Sinkronisasi mesh pesawat dengan state ----------
+// Urutan rotasi YXZ: heading dulu, lalu pitch, lalu bank. Grup
+// propeller ikut berputar sebanding throttle dan cakram blur menebal.
+function matchPlaneToState() {
   planeGroup.position.copy(state.position);
   planeGroup.rotation.order = 'YXZ';
   planeGroup.rotation.y = state.heading + Math.PI;
@@ -228,8 +233,9 @@ function syncPlaneMesh() {
   propDisc.material.opacity = state.throttle * 0.22;
 }
 
-function forwardVector() {
-  return tmpFwd.set(
+const scratchDir = new THREE.Vector3();
+function noseVector() {
+  return scratchDir.set(
     -Math.sin(state.heading) * Math.cos(state.pitch),
     Math.sin(state.pitch),
     -Math.cos(state.heading) * Math.cos(state.pitch),
@@ -237,97 +243,104 @@ function forwardVector() {
 }
 
 // ---------- Kamera ----------
-const camTarget = new THREE.Vector3(0, 220, 900);
-function updateCamera(dt) {
+const lookPoint = new THREE.Vector3(0, 220, 900);
+function frameCamera(dt) {
   if (!started) {
-    // Orbit sinematik mengelilingi fokus menu (meja makan / spawn bab)
-    menuOrbit += dt * 0.045;
+    // Orbit sinematik pelan mengelilingi fokus menu (meja / spawn bab).
+    orbitAngle += dt * 0.045;
     camera.position.set(
-      menuFocus.x + Math.cos(menuOrbit) * menuFocus.r,
+      menuFocus.x + Math.cos(orbitAngle) * menuFocus.r,
       menuFocus.y + 20,
-      menuFocus.z + Math.sin(menuOrbit) * menuFocus.r,
+      menuFocus.z + Math.sin(orbitAngle) * menuFocus.r,
     );
     camera.lookAt(menuFocus.x, menuFocus.y, menuFocus.z);
     return;
   }
-  const fwd = forwardVector();
+  const fwd = noseVector();
   if (cameraMode === 'cockpit') {
+    // Mata pilot: pesawat disembunyikan, kamera di hidung.
     planeGroup.visible = false;
-    const eye = state.position.clone().addScaledVector(fwd, 1.2).add(new THREE.Vector3(0, 1.05, 0));
-    camera.position.copy(eye);
+    const eyePos = state.position.clone().addScaledVector(fwd, 1.2).add(new THREE.Vector3(0, 1.05, 0));
+    camera.position.copy(eyePos);
     camera.lookAt(state.position.clone().addScaledVector(fwd, 60).add(new THREE.Vector3(0, 2, 0)));
   } else {
+    // Chase: membuntuti dari belakang-atas; pada layar tegak (HP)
+    // kamera ditarik lebih jauh supaya pesawat utuh dalam frame.
     planeGroup.visible = true;
-    // Layar tegak (HP): tarik kamera lebih jauh supaya pesawat utuh dalam frame
     const portrait = camera.aspect < 0.9;
-    const back = portrait ? 24 : 15;
-    const up = portrait ? 8 : 5.2;
+    const backDist = portrait ? 24 : 15;
+    const upDist = portrait ? 8 : 5.2;
     const desired = state.position.clone()
-      .addScaledVector(fwd, -back)
-      .add(new THREE.Vector3(0, up, 0));
+      .addScaledVector(fwd, -backDist)
+      .add(new THREE.Vector3(0, upDist, 0));
     camera.position.lerp(desired, Math.min(1, dt * 5));
-    const look = state.position.clone().addScaledVector(fwd, 14);
-    camTarget.lerp(look, Math.min(1, dt * 7));
-    camera.lookAt(camTarget);
+    const ahead = state.position.clone().addScaledVector(fwd, 14);
+    lookPoint.lerp(ahead, Math.min(1, dt * 7));
+    camera.lookAt(lookPoint);
   }
 }
 
-// ---------- Akhir game ----------
-function endGame(kind, title, sub, score, detail) {
+// ---------- Akhir permainan ----------
+function finishRun(kind, title, sub, score, detail) {
   if (ended) return;
   ended = true;
-  // Bab selesai dengan sukses → tawarkan lanjut ke bab berikutnya.
-  const showNext = kind === 'success' && mission && mission.id >= 1 && mission.id < 3 && mission.done;
-  $('btn-next').style.display = showNext ? '' : 'none';
+  // Bab yang selesai sukses menawarkan tombol lanjut ke bab berikutnya.
+  const offerNext = kind === 'success' && mission && mission.id >= 1 && mission.id < 3 && mission.done;
+  byId('btn-next').style.display = offerNext ? '' : 'none';
   hud.showBanner(kind, title, sub, score, detail);
 }
 
-function checkEndings() {
-  if (!started || ended || !mission) return;
-  if (state.crashed) {
-    const overSea = !isOverLandNow();
-    const cpNote = mission.hasRings && mission.ringIndex > 0
-      ? ` · Checkpoint ${mission.ringIndex}/${mission.ringPositions.length} tersimpan — TERBANG LAGI lanjut dari sana` : '';
-    endGame('crash', 'CRASH!',
-      overSea ? 'Pesawat jatuh ke lantai.' : 'Pesawat menabrak benda raksasa.',
-      mission.score,
-      `Kerusakan 100% · skor misi ${mission.score} · waktu ${fmtClock(state.flightTime)}${cpNote}`);
-    return;
-  }
-  if (state.landed && mission.hasRings && !mission.done) {
-    // Mendarat di landasan/zona mana pun sebelum ring lengkap: bab belum
-    // selesai — akhiri dengan jelas (bukan soft-lock), tanpa tombol lanjut.
-    endGame('crash', 'MENDARAT SEBELUM WAKTUNYA',
-      'Ring belum lengkap — kumpulkan semua ring dulu, baru mendarat di finis.',
-      mission.score,
-      `Skor misi ${mission.score} · nilai landing ${state.landingScore()}/100 · waktu ${fmtClock(state.flightTime)}`);
-    return;
-  }
-  if (state.fuel <= 0 && state.speed < 3 && !state.landed) {
-    endGame('crash', 'KEHABISAN BAHAN BAKAR',
-      'Tangki kosong — pesawat tidak bisa terbang lagi.',
-      mission.score, `Skor misi ${mission.score} · waktu ${fmtClock(state.flightTime)}`);
-    return;
-  }
-  if (mission.id === 0 && state.landed) {
-    endGame('success', 'MENDARAT!', 'Pendaratan mulus.',
-      150, `Terbang bebas · waktu ${fmtClock(state.flightTime)}`);
-  }
+// Detik -> "MM:SS".
+function clockText(totalSec) {
+  const minutes = Math.floor(totalSec / 60);
+  const seconds = Math.floor(totalSec % 60);
+  return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
 }
 
-function isOverLandNow() {
+function overSolidGround() {
   return terrainHeight(state.position.x, state.position.z) > 1.5;
 }
 
-function fmtClock(sec) {
-  const m = Math.floor(sec / 60);
-  const s = Math.floor(sec % 60);
-  return String(m).padStart(2, '0') + ':' + String(s).padStart(2, '0');
+// Pemeriksa kondisi akhir tiap frame selama misi berjalan: tabrakan,
+// mendarat sebelum ring lengkap, kehabisan bahan bakar, dan (khusus
+// terbang bebas) pendaratan yang sah.
+function watchEndings() {
+  if (!started || ended || !mission) return;
+  if (state.crashed) {
+    const cpNote = mission.hasRings && mission.ringIndex > 0
+      ? ` · Checkpoint ${mission.ringIndex}/${mission.ringPositions.length} tersimpan — TERBANG LAGI lanjut dari sana` : '';
+    finishRun('crash', 'CRASH!',
+      overSolidGround() ? 'Pesawat menabrak benda raksasa.' : 'Pesawat jatuh ke lantai.',
+      mission.score,
+      `Kerusakan 100% · skor misi ${mission.score} · waktu ${clockText(state.flightTime)}${cpNote}`);
+    return;
+  }
+  if (state.landed && mission.hasRings && !mission.done) {
+    // Menyentuh zona mana pun sebelum semua ring terkumpul: bab belum
+    // selesai — akhiri dengan jelas (bukan soft-lock), tanpa lanjut bab.
+    finishRun('crash', 'MENDARAT SEBELUM WAKTUNYA',
+      'Ring belum lengkap — kumpulkan semua ring dulu, baru mendarat di finis.',
+      mission.score,
+      `Skor misi ${mission.score} · nilai landing ${state.landingScore()}/100 · waktu ${clockText(state.flightTime)}`);
+    return;
+  }
+  if (state.fuel <= 0 && state.speed < 3 && !state.landed) {
+    finishRun('crash', 'KEHABISAN BAHAN BAKAR',
+      'Tangki kosong — pesawat tidak bisa terbang lagi.',
+      mission.score, `Skor misi ${mission.score} · waktu ${clockText(state.flightTime)}`);
+    return;
+  }
+  if (mission.id === 0 && state.landed) {
+    finishRun('success', 'MENDARAT!', 'Pendaratan mulus.',
+      150, `Terbang bebas · waktu ${clockText(state.flightTime)}`);
+  }
 }
 
-// ---------- Loop ----------
+// ---------- Loop utama ----------
+// Fisika dan misi hanya maju saat permainan berjalan dan belum
+// berakhir; HUD disegarkan paling sering tiap 0,12 detik.
 const clock = new THREE.Clock();
-let hudTick = 0;
+let hudAccum = 0;
 function animate() {
   requestAnimationFrame(animate);
   const dt = Math.min(clock.getDelta(), 0.05);
@@ -339,18 +352,18 @@ function animate() {
       if (ev) {
         hud.toast(ev.text, 3000);
         if (ev.event === 'done') {
-          endGame('success', ev.text, mission.name, mission.score, ev.detail || '');
+          finishRun('success', ev.text, mission.name, mission.score, ev.detail || '');
         }
       }
     }
-    checkEndings();
+    watchEndings();
   }
-  syncPlaneMesh();
-  updateCamera(dt);
-  hudTick += dt;
-  if (started && hudTick > 0.12) {
+  matchPlaneToState();
+  frameCamera(dt);
+  hudAccum += dt;
+  if (started && hudAccum > 0.12) {
     hud.update(state, mission && mission.id !== 0 ? mission : null);
-    hudTick = 0;
+    hudAccum = 0;
   }
   renderer.render(scene, camera);
 }
@@ -363,80 +376,93 @@ addEventListener('resize', () => {
 });
 
 // ---------- Preset screenshot (?shot=...) ----------
-// Render asli game yang berjalan — posisi & bab diatur supaya frame
-// langsung menunjukkan game lengkap tanpa klik menu.
-function applyShotPreset() {
-  const shot = params.get('shot');
-  if (!shot) return;
-  const aimAt = (target) => {
-    state.heading = Math.atan2(-(target.x - state.position.x), -(target.z - state.position.z));
-  };
-  if (shot === 'cover' || shot === 'phone') {
+// Render asli game yang berjalan: tiap preset memulai bab tertentu dan
+// menaruh pesawat pada pose terbang supaya frame langsung menunjukkan
+// permainan lengkap tanpa klik menu. aimNoseAt mengarahkan hidung ke
+// titik target dari posisi pesawat saat ini.
+function aimNoseAt(target) {
+  state.heading = Math.atan2(-(target.x - state.position.x), -(target.z - state.position.z));
+}
+
+const SHOT_FRAMINGS = {
+  // Bab 2 di dapur, menatap ring CP4 di jendela SELATAN — halaman,
+  // jalan setapak & bak pasir terlihat di balik jendela.
+  cover() {
     startMission(2);
-    // Bab 2: di dapur, menatap ring CP4 di jendela SELATAN — halaman,
-    // jalan setapak & bak pasir terlihat di balik jendela.
     const ring = mission.ringPositions[3];
     state.position.set(52, 44, 48);
-    aimAt(ring);
+    aimNoseAt(ring);
     state.pitch = 0.0;
     state.throttle = 0.72;
     state.speed = 60;
-  } else if (shot === 'rings') {
+  },
+  phone() { SHOT_FRAMINGS.cover(); },
+  // Bab 2 di garis lurus poros meja menuju CP2 (Rev7).
+  rings() {
     startMission(2);
-    // Di garis lurus poros meja menuju CP2 (Rev7)
     const ring = mission.ringPositions[1];
     state.position.set(ring.x - 48, ring.y + 6, ring.z - 38);
-    aimAt(ring);
+    aimNoseAt(ring);
     state.throttle = 0.75;
     state.speed = 62;
-  } else if (shot === 'bedroom') {
+  },
+  // Bab 1 tepat di atas kasur raksasa menuju CP3 — kasur, bantal &
+  // selimut memenuhi bingkai, ring di depan.
+  bedroom() {
     startMission(1);
-    // Bab 1: tepat di atas kasur raksasa menuju CP3 — kasur, bantal &
-    // selimut memenuhi bingkai, ring di depan
     const ring = mission.ringPositions[2];
     state.position.set(28, 49, -118);
-    aimAt(ring);
+    aimNoseAt(ring);
     state.throttle = 0.55;
     state.speed = 42;
-  } else if (shot === 'playground') {
+  },
+  // Bab 3 di sumbu ayunan A menuju CP2 — lurus searah palang, celah
+  // di antara dua dudukan gantung tepat di depan.
+  playground() {
     startMission(3);
-    // Bab 3: di sumbu ayunan A menuju CP2 — lurus searah palang, celah
-    // di antara dua dudukan gantung tepat di depan
     const ring = mission.ringPositions[1];
     state.position.set(-178, 29, 55);
-    aimAt(ring);
+    aimNoseAt(ring);
     state.throttle = 0.7;
     state.speed = 55;
-  } else if (shot === 'merry') {
+  },
+  // Bab 3: perosotan + putaran berputar dalam satu bingkai.
+  merry() {
     startMission(3);
-    // Bab 3: perosotan + putaran berputar dalam satu bingkai
     state.position.set(120, 30, 130);
-    aimAt({ x: 175, y: 12, z: 235 });
+    aimNoseAt({ x: 175, y: 12, z: 235 });
     state.throttle = 0.7;
     state.speed = 58;
-  } else if (shot === 'window') {
+  },
+  // Bab 2 baru keluar jendela, menurun menuju bak pasir & istana pasir.
+  window() {
     startMission(2);
-    // Baru keluar jendela, menurun menuju bak pasir & istana pasir
     state.position.set(148, 34, 238);
-    aimAt({ x: 190, y: 8, z: 360 });
+    aimNoseAt({ x: 190, y: 8, z: 360 });
     state.pitch = -0.05;
     state.throttle = 0.6;
     state.speed = 52;
-  } else if (shot === 'colors') {
+  },
+  // Bab 2 dengan CP1 sudah terkumpul (HIJAU permanen) dan CP2 sebagai
+  // target EMAS terang — memamerkan dua status warna ring sekaligus.
+  colors() {
     startMission(2);
-    // CP1 sudah terkumpul (HIJAU permanen), CP2 = target EMAS terang.
     mission.ringIndex = 1;
     mission.score = 100;
     mission.refreshRingColors();
     state.position.set(-340, 43, 142);
-    aimAt({ x: -142, y: 43, z: 8 });
+    aimNoseAt({ x: -142, y: 43, z: 8 });
     state.pitch = 0.0;
     state.throttle = 0.7;
     state.speed = 58;
-  }
-  syncPlaneMesh();
+  },
+};
+
+function applyShotFromQuery() {
+  const framing = SHOT_FRAMINGS[query.get('shot')];
+  if (framing) framing();
 }
-applyShotPreset();
+applyShotFromQuery();
 
 // ---------- Pengait playtest (dipakai skrip screenshot, bukan bagian UI) ----------
 window.__toyplane = {
